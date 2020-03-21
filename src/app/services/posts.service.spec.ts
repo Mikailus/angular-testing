@@ -1,40 +1,34 @@
 import { async, TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { PostsService } from './posts.service';
 import {Post } from './post';
 import {HttpClient} from '@angular/common/http';
 import {HttpService} from '../core/services/http.service';
+import { of, asyncScheduler } from 'rxjs';
 
 describe('PostsService', () => {
   let httpClient: HttpClient;
   let httpService: HttpService;
   let postsService: PostsService;
   let httpTestingController: HttpTestingController;
+  
+  const postsMock = [{ id: 1, title: 'Post 1', body: 'Description post one' }, { id: 2, title: 'Post 2', body: 'Description post two' }];
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
       providers: [
         PostsService,
         {
-          provide: httpClient,
-          useValue: jasmine.createSpyObj(HttpClient, ['get'])
-        },
-        {
-          provide: httpService,
-          useValue: jasmine.createSpyObj(HttpService, ['getData'])
+          provide: HttpService,
+          useValue: {
+            getData: jasmine.createSpy('getData').and.returnValue(of(postsMock, asyncScheduler))
+          }
         }
       ]
     });
 
-    httpClient = TestBed.inject(HttpClient);
     httpService = TestBed.inject(HttpService);
     postsService = TestBed.inject(PostsService);
-    httpTestingController = TestBed.inject(HttpTestingController);
-  });
-
-  afterEach(() => {
-    httpTestingController.verify();
   });
 
   it('should be created', () => {
@@ -42,15 +36,11 @@ describe('PostsService', () => {
   });
 
   it('should fetch posts data', async(() => {
-    const postsMock = [{ id: 1, title: 'Post 1', body: 'Description post one' }, { id: 2, title: 'Post 2', body: 'Description post two' }];
 
     postsService.getPosts().subscribe((posts: Post[]) => {
+      expect(httpService).toHaveBeenCalled();
       expect(posts.length).toBe(2);
       expect(posts).toEqual(postsMock);
     });
-
-    const req = httpTestingController.expectOne('https://jsonplaceholder.typicode.com/posts', 'call to Api - POST');
-    expect(req.request.method).toBe('GET');
-    req.flush(postsMock);
   }));
 });
